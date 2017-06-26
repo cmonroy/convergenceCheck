@@ -24,23 +24,22 @@ freely accessible at http://fluidsengineering.asmedigitalcollection.asme.org/art
 
 [2] "Quantitative V&V of CFD simulations and certification of CFD codes"
 F. Stern, R. Wilson and J. Shao, Int. J. Numer. Meth. Fluids 2006; 50:1335–1355
+
+[3] "Verification of Solutions in Unsteady Flows" 
+Eca, Hoekstra & Vaz, ASME 2015
 """
 
 from __future__ import division #from python 3.0, / means floating division and // means floor division, while in python 2.7, / means floor division
 
-#import os
-#import sys
 import numpy as np
-#import csv
 import pandas as pd
 from matplotlib import pyplot as plt
-
 import scipy.optimize as optimize
 
 
 def GCI_3_simulations_and_constant_refinement_factor( df ):
 #Convention in notation: 1 is finest, 3 is coarsest
-   df.sort_values('dx',  inplace=True) #ascending=False,
+   df.sort_values('dx',  inplace=True)
 
    r=df['dx'].values[1]/df['dx'].values[0]
 
@@ -115,6 +114,64 @@ def GCI( df ):
 def GCI_LS():
 #based on the modified Roach's approach with least square fit
    pass
+
+
+def unsteady_convergence(df):
+#based on presentation of "Verification of Solutions in Unsteady Flows" by  Eca, Hoekstra & Vaz at ASME 2015
+
+   df.sort_values('dx',  inplace=True)
+   df.sort_values('dt',  inplace=True)
+
+   df_Unsteady= pd.DataFrame({'Simulation':["behaviour","extrapolated_value", "p_x", "p_t"]}  ,columns=df.columns)
+   df_Unsteady["dx"].values[1]= 0.0
+   df_Unsteady["dt"].values[1]= 0.0
+   for icol, col in enumerate(df.columns):
+     if ( df[col].name != 'Simulation' and df[col].name != 'dx' and df[col].name != 'dt' ):
+
+         x0 = np.zeros(5, dtype = float) #x=[phi0,alpha_x,p_x,alpha_t,p_t]
+
+         res = optimize.fmin_powell(SRE_method2, x0, args=(df['dx'], df['dt'], df[col]), xtol=0.0001, ftol=0.0001, maxiter=None, maxfun=None, full_output=1, disp=1, retall=0, callback=None, direc=None)
+
+         #autre optimisation - avec contraintes cette fois-ci
+         #mybounds = [(-1e10,1e10),(-1e10,1e10),(0,3),(-1e10,1e10),(0,3)]
+         #res = optimize.fmin_l_bfgs_b(SRE, x0, args=(df['dx'], df['dt'], df[col]), bounds=mybounds, approx_grad=True)
+
+         df_Unsteady[col].values[1]= res[0][0] #phi_0
+         df_Unsteady[col].values[2]= res[0][2] #p_x
+         df_Unsteady[col].values[3]= res[0][4] #p_t
+
+   dfConvergence=df.append(df_Unsteady, ignore_index=True);
+
+
+   return dfConvergence
+
+
+
+def SRE_LS(x, h, tau, phi):
+   """
+     Least square minimization
+   """
+   SRE=0.0
+   for i in range(0,len(h)-1):
+      SRE=SRE+(phi[i]-(x[0]+x[1]*h[i]**x[2]+x[3]*tau[i]**x[4]))**2
+   return SRE
+
+def SRE_method2(x, h, tau, phi):
+   """
+     Second weithing function proposed by Eca et al.
+   """
+   SRE=0.0
+   
+   totalWeigth=0
+   for i in range(0,len(h)-1):
+      totalWeigth=totalWeigth+(1/h[i]+1/tau[i])
+
+   for i in range(0,len(h)-1):
+      wi=(1/h[i]+1/tau[i])/totalWeigth
+      SRE=SRE+(phi[i]-(x[0]+x[1]*h[i]**x[2]+x[3]*tau[i]**x[4]))**2
+   return SRE
+
+
 
 def checkDataFrame():
 #check if input dataFrame is on good format (should include keys "Simulation", "dx", "dt" and at least one column of CFD results)
