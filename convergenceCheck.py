@@ -35,6 +35,9 @@ Eca, Hoekstra & Vaz, ASME 2015
 
 [4] "Robust regression" by Patrich Breheny
 freely accessible at http://web.as.uky.edu/statistics/users/pbreheny/764-F11/notes/12-1.pdf
+
+[5] "Robust Regression" by John Fox & Sanford Weisberg
+freely accesible at http://users.stat.umn.edu/~sandy/courses/8053/handouts/robust.pdf
 """
 
 from __future__ import division #from python 3.0, / means floating division and // means floor division, while in python 2.7, / means floor division
@@ -145,6 +148,10 @@ def unsteady_convergence(df, lossFunction = "Tukey"):
          SRE=SRE+wi*(phi[i]-(x[0]+x[1]*h[i]**x[2]+x[3]*tau[i]**x[4]))**2
       return SRE
 
+   def func(x, h, tau):
+      func=x[0]+x[1]*h**x[2]+x[3]*tau**x[4]
+      return func
+
    def SRE_Huber(x, h, tau, phi):
       """
        Huber estimator
@@ -154,40 +161,53 @@ def unsteady_convergence(df, lossFunction = "Tukey"):
        the true distribution is normal (and much more efficient in
        many other cases)", see [4]
    
+       see [5] for algorithm
       """
-   
+      
       c=1.345
-   
+      sigma=np.std(func(x, h, tau)-phi)
+      k=c*sigma
+
       SRE=0.0
       for i in range(0,len(h)-1):
-         fi= x[1]+x[0]*h[i]**x[2]+x[3]*tau[i]**x[4]
+         fi= x[0]+x[1]*h[i]**x[2]+x[3]*tau[i]**x[4]
          ri= phi[i] - fi
-         if abs(ri)<c:
-            SRE=SRE+ri**2
+         if abs(ri)<k:
+            wi=1
+            SRE=SRE+wi*0.5*ri**2
          else:
-             SRE=SRE+ c*(2*abs(ri)-c)
+            wi=k/abs(ri)
+            SRE=SRE+ wi*(k*abs(ri)-0.5*k**2)
       return SRE
+
 
    def SRE_Tukey(x, h, tau, phi):
       """
        Tukey estimator, also known as bisquare estimator
-        
+
        "The value c = 4.685 is usually used for this loss function,
        and again, it provides an asymptotic efficiency 95% that of linear regression
        for the normal distribution", see [4]
+       
+       see [5] for algorithm
       """
-   
+
       c=4.685
-   
+      sigma=np.std(func(x, h, tau)-phi)
+      k=c*sigma
+
       SRE=0.0
       for i in range(0,len(h)-1):
          fi= x[1]+x[0]*h[i]**x[2]+x[3]*tau[i]**x[4]
          ri= phi[i] - fi
-         if abs(ri)<c:
-            SRE=SRE+ri*(1-(ri/c)**2)**2
+         if abs(ri)<k:
+            wi=(1-(ri/c)**2)**2
+            SRE=SRE+wi*((k**2)/6)*(1-(1-(ri/k)**2)**3)
          else:
              SRE=SRE+ 0
       return SRE
+
+
 
    dicoReader = {
                 "LS" : SRE_LS ,
@@ -262,7 +282,7 @@ if __name__ == '__main__' :
    df=pd.read_csv('example2D.csv')
    print df
 
-   dfConvergence=unsteady_convergence(df, lossFunction="Tukey")
+   dfConvergence=unsteady_convergence(df, lossFunction="LS")
 
    print dfConvergence
    dfConvergence.to_csv('exampleConvergence2D.csv')
