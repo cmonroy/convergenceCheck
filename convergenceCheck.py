@@ -104,7 +104,7 @@ def GCI( df ):
            dfGCI[col].values[0]= "Monotonic divergence"
         else:
            dfGCI[col].values[0]= "Oscillatory divergence"
-        if abs(R)<1: #the method proposed in [1] is only suited for monotonic convergence
+        if (0<R<1): #the method proposed in [1] is only suited for monotonic convergence
            def func(p):
                return 1/np.log(r21)*abs( np.log(abs(epsilon32/epsilon21))+np.log((r21**p-s)/(r32**p-s)))
            p=optimize.fixed_point(func,1/np.log(r21)*abs( np.log(abs(epsilon32/epsilon21))))
