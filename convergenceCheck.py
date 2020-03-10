@@ -224,7 +224,7 @@ def unsteady_convergence(df, lossFunction = "Tukey"):
    df_Unsteady["dx"].values[1]= 0.0
    df_Unsteady["dt"].values[1]= 0.0
    for icol, col in enumerate(df.columns):
-     print df[col].name
+     print (df[col].name)
      if ( df[col].name != 'Simulation' and df[col].name != 'dx' and df[col].name != 'dt' ):
 
          #x0 = np.zeros(5, dtype = float) #x=[phi0,alpha_x,p_x,alpha_t,p_t]
@@ -280,11 +280,11 @@ if __name__ == '__main__' :
 
    df=generateExampleInputFile2D('example2D.csv')
    df=pd.read_csv('example2D.csv')
-   print df
+   print (df)
 
    dfConvergence=unsteady_convergence(df, lossFunction="LS")
 
-   print dfConvergence
+   print (dfConvergence)
    dfConvergence.to_csv('exampleConvergence2D.csv')
 
    fig = plt.figure()
